@@ -2,6 +2,8 @@
 import sys, os, socket, params, time
 from threading import Thread
 from framedSock import FramedStreamSock
+from threading import Lock
+lock = Lock()
 
 switchesVarDefaults = (
     (('-l', '--listenPort') ,'listenPort', 50001),
@@ -24,24 +26,34 @@ lsock.listen(5)
 print("listening on:", bindAddr)
 
 class ServerThread(Thread):
+   # lock = Lock()
     requestCount = 0            # one instance / class
     def __init__(self, sock, debug):
+       # self.lock = Lock()
         Thread.__init__(self, daemon=True)
         self.fsock, self.debug = FramedStreamSock(sock, debug), debug
         self.start()
     def run(self):
+        lock.acquire()
         while True:
             msg = self.fsock.receivemsg()
             if not msg:
-                if self.debug: print(self.fsock, "server thread done")
+                if self.debug: 
+                    print(self.fsock, "server thread done")
                 return
             requestNum = ServerThread.requestCount
             time.sleep(0.001)
             ServerThread.requestCount = requestNum + 1
             msg = ("%s! (%d)" % (msg, requestNum)).encode()
+            print(msg)
             self.fsock.sendmsg(msg)
+            print("hello")
+        #finally:
+            lock.release()
 
 
 while True:
     sock, addr = lsock.accept()
+    #lock = Lock()
     ServerThread(sock, debug)
+    
